@@ -1,0 +1,107 @@
+pip install reportlab 
+pip install PyPDF2
+import csv
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import inch
+from reportlab.lib import colors
+from PyPDF2 import PdfReader, PdfWriter
+from io import BytesIO
+
+# Function to generate a certificate
+def generate_certificate(name, template_path="certi.pdf", logo_path="logo.png", signature_path="sign.png", output_file="certificate.pdf"):
+    # Create a buffer for the dynamic content
+    custom_pagesize = (841,595)
+    packet = BytesIO()
+    c = canvas.Canvas(packet, pagesize=custom_pagesize)
+
+    # Load the template PDF
+    template_pdf = PdfReader(open(template_path, "rb"))
+    template_page = template_pdf.pages[0]
+
+    # Get the dimensions of the template
+    template_width = float(template_page.mediabox[2])
+    template_height = float(template_page.mediabox[3])
+
+    # Add a logo (if provided)
+    # if logo_path:
+    #     logo_width = 2 * inch  # Width of the logo
+    #     logo_height = 1 * inch  # Height of the logo
+    #     # Calculate x-coordinate to center the logo horizontally
+    #     x = (template_width - logo_width) / 2
+    #     # Place the logo at the top of the page (1 inch from the top)
+    #     y = template_height - 1.5 * inch
+    #     c.drawImage(logo_path, x, y, width=logo_width, height=logo_height)
+
+    # Add the recipient's name
+    c.setFont("Helvetica-Bold", 30)
+    c.drawCentredString(template_width / 2, template_height - 4.3 * inch, name)
+
+    # Add the course name
+    c.setFont("Helvetica", 18)
+    c.drawString(template_width / 4, template_height - 4.8 * inch, "In recognition of his/her efforts and achievement in ")
+    # task during the Speak Sphere Club program.")
+
+    # Add the internship program text
+    c.setFont("Helvetica", 18)
+    c.drawString(template_width / 5, template_height - 5.2 * inch, "completing the "+task+" task during the Speak Sphere Club.")
+
+    # Add a signature (if provided)
+    if signature_path:
+        signature_width = 1.5 * inch  # Width of the signature
+        signature_height = 0.5 * inch  # Height of the signature
+        # Position the signature at the bottom right
+        c.drawImage(signature_path, template_width / 4.5, 2.3 * inch, width=signature_width, height=signature_height)
+
+    # Add a signature line
+    c.setFont("Helvetica", 12)
+    c.drawString( 0.7 * inch, 2.3 * inch, "Authorized Signature: ________________________")
+
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString( 2.3 * inch, 2 * inch, " Authorized by (Name)")
+
+    # Save the dynamic content to the buffer
+    c.save()
+
+    # Move the buffer position to the beginning
+    packet.seek(0)
+
+    # Merge the template with the dynamic content
+    output_pdf = PdfWriter()
+    dynamic_content = PdfReader(packet)
+    template_page.merge_page(dynamic_content.pages[0])
+    output_pdf.add_page(template_page)
+
+    # Save the final PDF
+    with open(output_file, "wb") as output_file_stream:
+        output_pdf.write(output_file_stream)
+
+    print(f"Certificate saved as {output_file}")
+
+# Main program
+if __name__ == "__main__":
+    # Path to the CSV file
+    csv_file = "recipients.csv"
+    # Path to the logo and signature images
+    logo_path = "logo.png"
+    signature_path = "narensign.png"
+    # Path to the template PDF
+    template_path = "certi.pdf"
+
+    # Read data from the CSV file
+    with open(csv_file, mode="r") as file:
+        reader = csv.DictReader(file)
+        # Get the column names from the first row
+        column_names = reader.fieldnames  # Assuming the first row contains headers
+
+        for row in reader:
+            # Extract data from the CSV row
+            name = row[column_names[0]]  # Assuming 'Name' is the first column
+            task = row[column_names[1]] #Assuming 'Task' is the second column
+
+
+            # Generate a unique output file name for each certificate
+            output_file = f"{name.replace(' ', '_')}_certificate.pdf"
+
+            # Generate the certificate
+            generate_certificate(name, template_path, logo_path, signature_path, output_file)
